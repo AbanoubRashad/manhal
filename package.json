@@ -1,0 +1,19 @@
+{
+  "name": "manhal",
+  "version": "1.0.0",
+  "description": "Manhal: a bilingual (English / Arabic) online learning platform for Egypt and the Arab world.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test --test-reporter=spec \"test/*.test.js\"",
+    "build:demo": "node scripts/build-demo.js",
+    "backup": "node scripts/backup.js",
+    "deploy:demo": "node scripts/build-demo.js && firebase deploy --only hosting"
+  },
+  "license": "MIT"
+}
