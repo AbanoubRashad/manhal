@@ -1,0 +1,10 @@
+{
+  "name": "Manhal",
+  "short_name": "Manhal",
+  "description": "Online courses in English and Arabic.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2F5F7",
+  "theme_color": "#0E5E6F",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
