@@ -44,7 +44,7 @@ export async function homePage() {
   <section class="wrap sec"><div class="sec-head"><h2>${t('cats_title')}</h2></div>
     <div class="cats">${cats.map(c => `<a class="catb" href="/explore?cat=${c.key}" style="--h:${c.hue};text-decoration:none"><span class="g">${esc(c.glyph)}</span><span><b>${esc(L(c.name))}</b><small>${fmt(c.count)} ${t('courses_n')}</small></span></a>`).join('')}</div></section>
   <section class="wrap sec"><div class="sec-head"><h2>${t('trend_title')}</h2><a href="/explore">${t('see_all')}${ic('chev', 'sm flip')}</a></div>
-    <div class="grid">${trend.map(c => card(c, cats)).join('')}</div></section>
+    <div class="grid trend">${trend.map(c => card(c, cats)).join('')}</div></section>
   <section class="wrap sec"><div class="sec-head"><h2>${t('how_title')}</h2></div>
     <ol class="how"><li><h3>${t('how1_t')}</h3><p>${t('how1_d')}</p></li><li><h3>${t('how2_t')}</h3><p>${t('how2_d')}</p></li><li><h3>${t('how3_t')}</h3><p>${t('how3_d')}</p></li></ol></section>
   <section class="wrap sec"><div class="sec-head"><h2>${t('plans_title')}</h2></div>

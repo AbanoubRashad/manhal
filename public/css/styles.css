@@ -748,3 +748,5 @@ main:has(>footer:last-child){padding-bottom:0}
   .sbtn{margin-inline-start:auto;border-color:transparent;background:transparent;padding:8px}
   .tools{margin-inline-start:0}
 }
+/* three-column grids show six popular courses so no row is left half empty */
+@media (min-width:561px) and (max-width:1093px){.trend>.card:nth-child(n+7){display:none}}
