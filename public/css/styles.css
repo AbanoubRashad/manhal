@@ -714,3 +714,23 @@ main:has(>footer:last-child){padding-bottom:0}
   .card .pr{padding-top:4px}
   .wish{width:32px;height:32px}
 }
+@media (max-width:980px){.player{gap:20px;padding-block:16px}}
+@media (max-width:560px){
+  .page-head{padding-block:24px 14px}
+  .dash-head{padding-block:24px 18px}
+  .tiles{gap:10px;margin-bottom:22px}
+  .tile{flex-direction:column;align-items:flex-start;gap:10px;padding:14px}
+  .tile .ti{width:36px;height:36px;border-radius:10px}
+  .ptop{flex-wrap:nowrap;gap:10px;padding-block:10px}
+  .ptop a.back{font-size:0;gap:0}
+  .ptop h1{min-width:0;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ring svg{width:32px;height:32px}
+  .ltitle h2{font-size:1.3rem}
+  .teach-hero{padding-block:28px 22px}
+  .ben{gap:10px;margin-bottom:28px}
+  .ben div{display:grid;grid-template-columns:42px minmax(0,1fr);column-gap:14px;padding:16px}
+  .ben .ti{grid-row:span 2;margin-bottom:0}
+  .ben h3{margin-bottom:2px}
+  .auth{margin-block:24px}
+  .verify-card{margin-block:24px}
+}
