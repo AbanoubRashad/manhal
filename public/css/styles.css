@@ -734,3 +734,17 @@ main:has(>footer:last-child){padding-bottom:0}
   .auth{margin-block:24px}
   .verify-card{margin-block:24px}
 }
+
+/* header: never clip the tools */
+.sbtn{min-width:0}
+.tools{flex:none}
+.nl{white-space:nowrap}
+@media (min-width:821px) and (max-width:1100px){
+  .top .wrap{gap:10px}
+  .nl{padding:8px 10px}
+  .sbtn .kbd{display:none}
+}
+@media (max-width:420px){
+  .sbtn{margin-inline-start:auto;border-color:transparent;background:transparent;padding:8px}
+  .tools{margin-inline-start:0}
+}
