@@ -641,3 +641,12 @@ table.t a{color:var(--brand);font-weight:700;text-decoration:none}
 .cert .cl{display:flex;border:0;background:none;padding:0;border-radius:0;grid-template-columns:none}
 @media (max-width:420px){.sbtn span{display:none}.sbtn{flex:0 0 auto}.tools{margin-inline-start:auto}}
 .ctrl{direction:ltr}
+
+/* ---------- tablet + phone spacing ---------- */
+body{margin:0}
+main:has(>footer:last-child){padding-bottom:0}
+@media (max-width:820px){
+  main{padding-bottom:48px}
+  body{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
+  footer{margin-top:8px}
+}
