@@ -15,6 +15,17 @@ import { ordersService } from './services/orders.js';
 import { learningService } from './services/learning.js';
 import { studioService } from './services/studio.js';
 import { adminService } from './services/admin.js';
+import { createAi } from './lib/ai.js';
+import { knowledgeService } from './services/knowledge.js';
+import { accessService } from './services/access.js';
+import { notifyService } from './services/notify.js';
+import { mentorService } from './services/mentor.js';
+import { coachService } from './services/coach.js';
+import { liveService } from './services/live.js';
+import { qaService } from './services/qa.js';
+import { reportsService } from './services/reports.js';
+import { aiAdminService } from './services/aiAdmin.js';
+import { housekeepingService } from './services/housekeeping.js';
 import authRoutes from './routes/auth.js';
 import catalogRoutes from './routes/catalog.js';
 import cartRoutes from './routes/cart.js';
@@ -22,6 +33,7 @@ import learningRoutes from './routes/learning.js';
 import studioRoutes from './routes/studio.js';
 import adminRoutes from './routes/admin.js';
 import paymentRoutes from './routes/payments.js';
+import mentorRoutes from './routes/mentor.js';
 
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const ROLE_OK = {
@@ -48,15 +60,26 @@ export function createApp({ db, config, log, provider, fetch = globalThis.fetch,
   s.tokens = tokensService(s);
   s.auth = authService(s);
   s.catalog = catalogService(s);
+  s.access = accessService(s);
+  s.notify = notifyService(s);
+  s.knowledge = knowledgeService(s);
+  s.ai = createAi({ config, db, log, fetch, now });
   s.cart = cartService(s);
   s.earnings = earningsService(s);
   s.orders = ordersService(s);
   s.learning = learningService(s);
   s.studio = studioService(s);
   s.admin = adminService(s);
+  s.mentor = mentorService(s);
+  s.coach = coachService(s);
+  s.live = liveService(s);
+  s.qa = qaService(s);
+  s.reports = reportsService(s);
+  s.aiAdmin = aiAdminService(s);
+  s.housekeeping = housekeepingService(s);
 
   const router = createRouter();
-  for (const register of [authRoutes, catalogRoutes, cartRoutes, learningRoutes, studioRoutes, adminRoutes, paymentRoutes]) register(router, s);
+  for (const register of [authRoutes, catalogRoutes, cartRoutes, learningRoutes, studioRoutes, adminRoutes, paymentRoutes, mentorRoutes]) register(router, s);
 
   const secure = config.baseUrl.startsWith('https://');
   const cookie = (value, maxAge) => `sid=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
@@ -64,7 +87,8 @@ export function createApp({ db, config, log, provider, fetch = globalThis.fetch,
   /**
    * Handle one API request.
    * req: { method, path, query, headers (lower-case keys), cookies, body, ip }
-   * returns: { status, headers, body } where body is a JSON-serialisable object.
+   * returns: { status, headers, body } where body is a JSON-serialisable object,
+   * or { status, headers, stream } where stream is an async iterable of events (sent as SSE).
    */
   async function handle(req) {
     const headers = {};
@@ -107,6 +131,7 @@ export function createApp({ db, config, log, provider, fetch = globalThis.fetch,
       }
       const out = await route.handler(ctx);
       if (out && out.redirect) { headers.Location = out.redirect; return res(302, null); }
+      if (out && out.stream) return { status: 200, headers, stream: out.stream };
       if (out && typeof out.status === 'number' && 'body' in out) return res(out.status, out.body);
       return res(200, out ?? { ok: true });
     } catch (err) {
