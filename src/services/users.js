@@ -5,6 +5,7 @@ import { conflict, badRequest, notFound } from '../lib/errors.js';
 export const publicUser = u => u && ({
   id: u.id, email: u.email, name: u.name, role: u.role, lang: u.lang,
   headline: u.headline, bio: u.bio, emailVerified: Boolean(u.email_verified_at), createdAt: u.created_at,
+  tz: u.tz, birthYear: u.birth_year ?? null,
 });
 
 export function usersService({ db }) {
@@ -12,12 +13,12 @@ export function usersService({ db }) {
   const byEmail = email => db.get('SELECT * FROM users WHERE email = ?', String(email).toLowerCase());
   return {
     byId, byEmail,
-    create({ email, name, password, role = 'learner', lang = 'en', headline = '', verified = false }) {
+    create({ email, name, password, role = 'learner', lang = 'en', headline = '', verified = false, birthYear = null }) {
       if (byEmail(email)) throw conflict('An account with this email already exists. Try signing in instead.');
       const { id } = db.run(
-        `INSERT INTO users (email, name, password_hash, role, lang, headline, email_verified_at)
-         VALUES (?, ?, ?, ?, ?, ?, ${verified ? "datetime('now')" : 'NULL'})`,
-        email.toLowerCase(), name, hashPassword(password), role, lang, headline);
+        `INSERT INTO users (email, name, password_hash, role, lang, headline, birth_year, email_verified_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ${verified ? "datetime('now')" : 'NULL'})`,
+        email.toLowerCase(), name, hashPassword(password), role, lang, headline, birthYear);
       return byId(id);
     },
     checkPassword(email, password) {
