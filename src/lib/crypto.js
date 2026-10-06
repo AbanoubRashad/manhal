@@ -9,6 +9,8 @@ export const sha256 = text => createHash('sha256').update(String(text)).digest('
 
 export const hmacSha512 = (key, text) => createHmac('sha512', key).update(String(text)).digest('hex');
 
+export const hmacSha256 = (key, text) => createHmac('sha256', String(key)).update(String(text)).digest('hex');
+
 /** Constant-time comparison of two strings. */
 export function safeEqual(a, b) {
   const x = Buffer.from(String(a)), y = Buffer.from(String(b));
