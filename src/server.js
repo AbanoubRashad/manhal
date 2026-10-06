@@ -14,7 +14,8 @@ import { metaFor, renderShell, sitemapXml, robotsTxt } from './lib/seo.js';
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PUBLIC = join(ROOT, 'public');
 const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
-const MAX_BODY = 200_000;
+// Course saves can carry lesson text and transcripts.
+const MAX_BODY = 2_000_000;
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -59,6 +60,30 @@ function readBody(req) {
     req.on('end', () => ok(Buffer.concat(chunks).toString('utf8')));
     req.on('error', fail);
   });
+}
+
+/** Send an async iterable of events as Server-Sent Events. Stops the generator if the client leaves. */
+async function pipeEvents(req, res, out, headers) {
+  res.writeHead(200, { ...headers, ...out.headers, 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
+  const it = out.stream[Symbol.asyncIterator]();
+  let closed = false;
+  res.on('close', () => { if (!res.writableEnded) { closed = true; it.return?.().catch(() => {}); } });
+  try {
+    for (;;) {
+      const { value, done } = await it.next();
+      if (done || closed) break;
+      res.write(`event: ${value.type}
+data: ${JSON.stringify(value)}
+
+`);
+    }
+  } catch {
+    if (!closed) res.write(`event: error
+data: ${JSON.stringify({ type: 'error', error: 'Something went wrong on our side. Please try again.' })}
+
+`);
+  }
+  res.end();
 }
 
 /** Wrap the app in an HTTP server. Exported so tests can start it on a random port. */
@@ -110,6 +135,7 @@ export function createServer({ app, config, log, publicDir = PUBLIC }) {
           headers: req.headers, cookies: parseCookies(req.headers.cookie),
           ip: req.socket.remoteAddress,
         });
+        if (out.stream) return pipeEvents(req, res, out, { ...SECURITY_HEADERS, 'X-Request-Id': reqId });
         return send(out.status, out.body == null ? '' : JSON.stringify(out.body), {
           'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...out.headers,
         });
@@ -157,9 +183,14 @@ export function start(env = process.env) {
   const server = createServer({ app, config, log });
   server.listen(config.port, () => log.info('listening', { url: config.baseUrl, port: config.port, version: VERSION, payments: config.payments.provider, email: config.email.provider }));
   const purge = setInterval(() => app.services.sessions.purgeExpired(), 6 * 3600_000).unref();
+  // Reminders every 5 minutes; coach, reports, history purge and budget check every hour.
+  const { housekeeping } = app.services;
+  const frequent = setInterval(() => housekeeping.frequent(), 5 * 60_000).unref();
+  const hourly = setInterval(() => housekeeping.hourly(), 3600_000).unref();
+  setTimeout(() => housekeeping.hourly(), 30_000).unref();
   const stop = signal => {
     log.info('shutting down', { signal });
-    clearInterval(purge);
+    clearInterval(purge); clearInterval(frequent); clearInterval(hourly);
     server.close(() => { db.close(); process.exit(0); });
     setTimeout(() => process.exit(0), 5000).unref();
   };
