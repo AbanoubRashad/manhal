@@ -2,7 +2,7 @@ import { badRequest, notFound, forbidden, conflict } from '../lib/errors.js';
 import { randomToken } from '../lib/crypto.js';
 import { sqlTime } from '../lib/time.js';
 
-export function learningService({ db, catalog, video, now = () => new Date() }) {
+export function learningService({ db, catalog, video, notify, now = () => new Date() }) {
   const enrollment = (userId, courseId) => db.get('SELECT * FROM enrollments WHERE user_id = ? AND course_id = ?', userId, courseId);
   const canTeach = (user, course) => user && (user.role === 'admin' || course.instructor_id === user.id);
 
@@ -167,6 +167,12 @@ export function learningService({ db, catalog, video, now = () => new Date() }) 
       }
       const code = `MNL-${randomToken(9).replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4).padEnd(4, 'X')}-${randomToken(9).replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6).padEnd(6, 'Z')}`;
       db.run('INSERT INTO certificates (code, user_id, course_id, name) VALUES (?, ?, ?, ?)', code, user.id, courseId, name || user.name);
+      const c = catalog.row(courseId);
+      notify?.push(user.id, {
+        kind: 'certificate', key: `certificate:${courseId}`, link: `/certificates/${code}`, email: false,
+        title: { en: 'You earned a certificate', ar: 'حصلت على شهادة' },
+        body: { en: `Congratulations on finishing ${c.title_en}.`, ar: `مبروك على إنهاء ${c.title_ar || c.title_en}.` },
+      }).catch(() => {});
       return this.verify(code);
     },
     /** Public verification of a certificate code. */
