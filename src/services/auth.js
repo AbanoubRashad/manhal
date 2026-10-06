@@ -1,7 +1,8 @@
 import { unauthorized } from '../lib/errors.js';
+import { randomToken } from '../lib/crypto.js';
 
 /** Sign-up, sign-in, email verification and password reset. */
-export function authService({ config, users, sessions, tokens, mailer }) {
+export function authService({ db, config, users, sessions, tokens, mailer }) {
   const link = (path, token) => `${config.baseUrl}${path}?token=${encodeURIComponent(token)}`;
 
   async function sendVerification(user) {
@@ -11,8 +12,14 @@ export function authService({ config, users, sessions, tokens, mailer }) {
 
   return {
     sendVerification,
-    async register({ name, email, password, lang }) {
-      const user = users.create({ name, email, password, lang });
+    async register({ name, email, password, lang, birthYear }) {
+      let user = users.create({ name, email, password, lang, birthYear });
+      // A/B test: new learners are assigned once, at random, and the group is stored on the user.
+      if (config.ai?.experiment) {
+        const group = randomToken(1).charCodeAt(0) % 2 ? 'mentor' : 'control';
+        db.run('UPDATE users SET ab_group = ? WHERE id = ?', group, user.id);
+        user = users.byId(user.id);
+      }
       await sendVerification(user);
       return { user, ...sessions.create(user.id) };
     },
