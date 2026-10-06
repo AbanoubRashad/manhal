@@ -37,9 +37,41 @@ export function loadConfig(env = process.env) {
       ttl: Number(env.VIDEO_URL_TTL) || 7200,
     },
     backup: { dir: env.BACKUP_DIR || 'data/backups', keep: Number(env.BACKUP_KEEP) || 14 },
+    ai: {
+      provider: env.AI_PROVIDER || 'demo',
+      apiKey: env.ANTHROPIC_API_KEY || '',
+      baseUrl: (env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/$/, ''),
+      modelChat: env.AI_MODEL_CHAT || 'claude-sonnet-5-5',
+      modelFast: env.AI_MODEL_FAST || 'claude-haiku-4-5-20251001',
+      // USD per million tokens [input, output]. Check https://claude.com/pricing before relying on cost figures.
+      priceChat: [num(env.AI_PRICE_CHAT_IN, 2), num(env.AI_PRICE_CHAT_OUT, 10)],
+      priceFast: [num(env.AI_PRICE_FAST_IN, 1), num(env.AI_PRICE_FAST_OUT, 5)],
+      timeoutMs: num(env.AI_TIMEOUT_MS, 30_000),
+      retryDelayMs: num(env.AI_RETRY_DELAY_MS, 1500),
+      historyDays: num(env.AI_HISTORY_DAYS, 90),
+      dailyLimitFree: num(env.AI_DAILY_LIMIT_FREE, 15),
+      dailyLimitPlus: num(env.AI_DAILY_LIMIT_PLUS, 100),
+      monthlyBudgetUsd: num(env.AI_MONTHLY_BUDGET_USD, 50),
+      maxInputChars: num(env.AI_MAX_INPUT_CHARS, 1500),
+      maxOutputTokens: num(env.AI_MAX_OUTPUT_TOKENS, 600),
+      perMinute: num(env.AI_RATE_PER_MINUTE, 10),
+      experiment: env.AI_EXPERIMENT === 'on',
+      search: env.AI_SEARCH === 'keyword' ? 'keyword' : 'auto',
+    },
+    coach: {
+      inactiveDays: num(env.COACH_INACTIVE_DAYS, 3),
+      minGapHours: num(env.COACH_MIN_GAP_HOURS, 48),
+      maxPerWeek: num(env.COACH_MAX_PER_WEEK, 3),
+      quietStart: num(env.COACH_QUIET_START, 22),
+      quietEnd: num(env.COACH_QUIET_END, 9),
+    },
+    // Shown when a learner seems to be in distress. Fill in verified Egyptian support contacts.
+    supportResources: env.SUPPORT_RESOURCES_EG || '',
   };
   return config;
 }
+
+const num = (v, d) => (v === undefined || v === '' || !Number.isFinite(Number(v)) ? d : Number(v));
 
 /** Problems that must stop a production boot. Returns plain-language messages. */
 export function configProblems(config) {
@@ -53,5 +85,7 @@ export function configProblems(config) {
     if (!p.secretKey || !p.publicKey || !p.hmacSecret || !p.integrationIds.length) out.push('Paymob needs PAYMOB_SECRET_KEY, PAYMOB_PUBLIC_KEY, PAYMOB_HMAC_SECRET and PAYMOB_INTEGRATION_IDS.');
   }
   if (!config.baseUrl.startsWith('https://')) out.push('BASE_URL should be your public https:// address.');
+  if (!['demo', 'anthropic'].includes(config.ai.provider)) out.push('AI_PROVIDER must be "demo" or "anthropic".');
+  if (config.ai.provider === 'anthropic' && !config.ai.apiKey) out.push('AI_PROVIDER=anthropic needs ANTHROPIC_API_KEY.');
   return out;
 }
