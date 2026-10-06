@@ -9,7 +9,11 @@ export default function learningRoutes(r, s) {
 
   // Playback is public for preview lessons, so auth is checked inside the service.
   r.get('/api/lessons/:id/play', ctx => ({ video: learning.play(ctx.user, id(ctx.params.id, 'lesson')) }));
-  r.post('/api/lessons/:id/complete', ctx => ({ progress: learning.complete(ctx.user, id(ctx.params.id, 'lesson')) }), user);
+  r.post('/api/lessons/:id/complete', ctx => {
+    const progress = learning.complete(ctx.user, id(ctx.params.id, 'lesson'));
+    s.coach.afterLesson(ctx.user.id);
+    return { progress };
+  }, user);
   r.get('/api/lessons/:id/note', ctx => learning.getNote(ctx.user, id(ctx.params.id, 'lesson')), user);
   r.put('/api/lessons/:id/note', ctx => {
     const { body } = validate(ctx.body, { body: { type: 'string', label: 'Note', max: 20000, default: '' } });
