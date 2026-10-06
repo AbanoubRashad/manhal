@@ -15,8 +15,10 @@ const K = new Uint32Array([
   0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
   0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2]);
 
-export function sha256(text) {
-  const msg = new TextEncoder().encode(String(text));
+export const sha256 = text => hex(sha256Bytes(new TextEncoder().encode(String(text))));
+const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+
+function sha256Bytes(msg) {
   const len = msg.length, total = ((len + 9 + 63) >> 6) << 6;
   const buf = new Uint8Array(total);
   buf.set(msg); buf[len] = 0x80;
@@ -39,7 +41,19 @@ export function sha256(text) {
     }
     H[0] += a; H[1] += b; H[2] += c; H[3] += d; H[4] += e; H[5] += f; H[6] += g; H[7] += h;
   }
-  return [...H].map(x => x.toString(16).padStart(8, '0')).join('');
+  const out = new Uint8Array(32), dv = new DataView(out.buffer);
+  H.forEach((x, i) => dv.setUint32(i * 4, x));
+  return out;
+}
+
+/** HMAC-SHA256 over UTF-8 text (RFC 2104). */
+export function hmacSha256(key, text) {
+  const enc = new TextEncoder();
+  let k = enc.encode(String(key));
+  if (k.length > 64) k = sha256Bytes(k);
+  const pad = n => { const b = new Uint8Array(64); b.set(k); return b.map(x => x ^ n); };
+  const join = (a, b) => { const o = new Uint8Array(a.length + b.length); o.set(a); o.set(b, a.length); return o; };
+  return hex(sha256Bytes(join(pad(0x5c), sha256Bytes(join(pad(0x36), enc.encode(String(text)))))));
 }
 
 export function hmacSha512() { throw new Error('Paymob signatures are not available in the browser demo.'); }
