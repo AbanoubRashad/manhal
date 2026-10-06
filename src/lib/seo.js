@@ -17,7 +17,7 @@ const STATIC = {
 };
 
 /** Paths that should not be indexed. */
-export const PRIVATE_PREFIXES = ['/api/', '/learn/', '/learning', '/cart', '/orders', '/account', '/studio', '/admin', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/certificates', '/dev/'];
+export const PRIVATE_PREFIXES = ['/api/', '/learn/', '/learning', '/cart', '/orders', '/account', '/studio', '/admin', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/certificates', '/dev/', '/notifications', '/n/', '/mentor/', '/parent/'];
 
 /** Work out the meta tags for a path. `findCourse(slug)` returns a published course row or null. */
 export function metaFor(path, { baseUrl, findCourse }) {
