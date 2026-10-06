@@ -83,6 +83,18 @@ const T = {
   },
 };
 
+// Generic notice used by notifications, the coach, reminders and reports.
+// data: { title, lines: [..], cta, url, footer, unsubscribeUrl } where text fields are { en, ar } pairs.
+const pick = (v, l) => (v && typeof v === 'object' ? v[l] || v.en : v);
+T.notice = Object.fromEntries(['en', 'ar'].map(l => [l, d => ({
+  subject: pick(d.subject || d.title, l),
+  title: pick(d.title, l),
+  lines: (d.lines || []).map(x => pick(x, l)).filter(Boolean),
+  button: d.url ? { label: pick(d.cta, l) || (l === 'ar' ? 'افتح منهل' : 'Open Manhal'), url: d.url } : null,
+  footer: pick(d.footer, l),
+  unsubscribe: d.unsubscribeUrl ? { label: l === 'ar' ? 'إيقاف رسائل التحفيز بنقرة واحدة' : 'Turn off coach messages with one click', url: d.unsubscribeUrl } : null,
+})]));
+
 export const templateNames = Object.keys(T);
 
 export function render(template, lang, data) {
@@ -102,9 +114,11 @@ ${o.discount ? `<tr><td style="padding:8px 0">${l === 'ar' ? 'الخصم' : 'Dis
       `\n${l === 'ar' ? 'الإجمالي' : 'Total'}: ${money(o.total, l)}`;
   }
   const body = m.lines.map(x => `<p style="margin:0 0 10px">${esc(x)}</p>`).join('') + rows +
-    (m.footer ? `<p style="margin-top:18px;font-size:13px;color:#566977">${esc(m.footer)}</p>` : '');
+    (m.footer ? `<p style="margin-top:18px;font-size:13px;color:#566977">${esc(m.footer)}</p>` : '') +
+    (m.unsubscribe ? `<p style="margin-top:10px;font-size:12px"><a href="${esc(m.unsubscribe.url)}" style="color:#566977">${esc(m.unsubscribe.label)}</a></p>` : '');
   const html = layout({ lang: l, title: m.title, body, button: m.button });
-  const text = [m.title, '', ...m.lines, textRows, m.button ? `\n${m.button.label}: ${m.button.url}` : '', m.footer ? `\n${m.footer}` : '']
+  const text = [m.title, '', ...m.lines, textRows, m.button ? `\n${m.button.label}: ${m.button.url}` : '', m.footer ? `\n${m.footer}` : '',
+    m.unsubscribe ? `\n${m.unsubscribe.label}: ${m.unsubscribe.url}` : '']
     .filter(x => x !== '').join('\n');
   return { subject: m.subject, html, text };
 }
