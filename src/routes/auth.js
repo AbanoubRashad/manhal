@@ -1,16 +1,19 @@
 import { validate, email, password } from '../lib/validate.js';
 import { publicUser } from '../services/users.js';
 import { notFound } from '../lib/errors.js';
+import { featureOn } from '../services/mentor.js';
 
 const LANG = { type: 'string', label: 'Language', oneOf: ['en', 'ar'] };
 
 export default function authRoutes(r, s) {
-  const { config, auth, users, sessions, cart, limits, mailer } = s;
+  const { db, config, auth, users, sessions, cart, limits, mailer, notify, mentor, ai } = s;
 
   r.get('/api/me', ctx => ({
     user: publicUser(ctx.user),
     csrf: ctx.session?.csrf ?? null,
     cartCount: ctx.user ? cart.count(ctx.user.id) : 0,
+    unread: ctx.user ? notify.unread(ctx.user.id) : 0,
+    mentor: { available: featureOn(db, 'ai_tutor') && !(ctx.user && mentor.inControl(ctx.user)), demo: ai.provider === 'demo' },
     config: {
       payments: config.payments.provider,
       devMail: mailer.provider.name === 'console' && !config.production,
@@ -23,6 +26,7 @@ export default function authRoutes(r, s) {
     const body = validate(ctx.body, {
       name: { type: 'string', label: 'Name', required: true, min: 2, max: 80 },
       email, password, lang: { ...LANG, default: ctx.lang },
+      birthYear: { type: 'int', label: 'Birth year', min: 1920, max: new Date().getUTCFullYear() - 5 },
     });
     const { user, token, csrf } = await auth.register(body);
     ctx.setSession(token);
