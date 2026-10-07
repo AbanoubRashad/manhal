@@ -3,6 +3,7 @@ import { get } from '../api.js';
 import { ic } from '../icons.js';
 import { app, cover, card, footer, loading, errorView, requireUser } from '../ui.js';
 import { openCertificate } from './certificate.js';
+import { liveHTML, wireLive } from '../community.js';
 
 function weekChart(week) {
   const days = t('days');
@@ -27,7 +28,8 @@ export async function learningPage() {
   if (!requireUser()) return;
   loading();
   let d, cats;
-  try { [d, { categories: cats }] = await Promise.all([get('/api/learning'), get('/api/categories')]); } catch (e) { return errorView(e); }
+  let live = [];
+  try { [d, { categories: cats }, { sessions: live }] = await Promise.all([get('/api/learning'), get('/api/categories'), get('/api/live').catch(() => ({ sessions: [] }))]); } catch (e) { return errorView(e); }
   const active = d.courses.filter(c => c.progress.percent < 100).sort((a, b) => b.progress.percent - a.progress.percent);
   const done = d.courses.filter(c => c.progress.percent === 100);
   const first = store.me.name.split(' ')[0];
@@ -49,6 +51,7 @@ export async function learningPage() {
       ${done.length ? `<h2 style="margin-top:28px">${t('cert_title')}</h2><div class="certs">${done.map(c => `<div class="certc"><span class="ti">${ic('award')}</span><div><b>${esc(L(c.title))}</b><button data-cert="${c.id}">${t('view_cert')}</button></div></div>`).join('')}</div>` : ''}
     </div>
     <div>
+      ${live.length ? `<div class="panel" id="dlive"><h3>${t('live_sessions')}</h3>${liveHTML(live, { showCourse: true })}</div>` : ''}
       <div class="panel"><h3>${t('activity')}</h3>${weekChart(d.week)}</div>
       <div class="panel"><h3>${t('heat')}</h3><div class="heat">${d.heat.map(x => `<i class="${heatLevel(x.minutes)}" title="${x.date}: ${fmt(x.minutes)} ${t('min')}"></i>`).join('')}</div>
         <div class="hleg">${t('less')} <i style="background:var(--sunk)"></i><i style="background:color-mix(in srgb,var(--brand) 28%,var(--sunk))"></i><i style="background:color-mix(in srgb,var(--brand) 52%,var(--sunk))"></i><i style="background:color-mix(in srgb,var(--brand) 76%,var(--sunk))"></i><i style="background:var(--brand)"></i> ${t('more')}</div></div>
@@ -57,6 +60,7 @@ export async function learningPage() {
   ${d.wishlist.length ? `<div class="sec" style="margin-top:36px"><div class="sec-head"><h2>${t('wish_title')}</h2></div><div class="grid">${d.wishlist.map(c => card(c, cats)).join('')}</div></div>` : ''}
   </section>${footer()}`;
 
+  if (live.length) wireLive(app().querySelector('#dlive'), live);
   app().querySelectorAll('[data-cert]').forEach(b => b.addEventListener('click', () => {
     const c = d.courses.find(x => x.id === Number(b.dataset.cert));
     openCertificate(c);
