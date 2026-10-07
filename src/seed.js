@@ -1,4 +1,5 @@
 import { categories, courses } from './data/catalog.js';
+import { lessonNotes } from './data/lessons.js';
 import { slugify } from './services/studio.js';
 import { sqlTime } from './lib/time.js';
 
@@ -9,6 +10,41 @@ export const DEMO_ACCOUNTS = [
 ];
 
 const BUYERS = ['Youssef Hamdy', 'Nada Ibrahim', 'Khaled Samy', 'Reem Mostafa', 'Ali Gamal', 'Habiba Tarek', 'Omar Fekry', 'Farida Adel'];
+
+/** Sample Q&A, an announcement and a live session in Salma's Python course. */
+function seedCommunity(s, { L, salma, course, daysAgo, now }) {
+  const { db } = s;
+  const py = course('python-for-data-analysis');
+  const lesson = pos => db.get('SELECT id FROM lessons WHERE course_id = ? AND position = ?', py.id, pos).id;
+  const buyer = db.get("SELECT u.id FROM users u JOIN enrollments e ON e.user_id = u.id AND e.course_id = ? WHERE u.id != ? AND u.role = 'learner' LIMIT 1", py.id, L.id) || L;
+  const ask = (userId, pos, title, body, day) => db.run('INSERT INTO questions (course_id, lesson_id, user_id, title, body, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    py.id, lesson(pos), userId, title, body, daysAgo(day, 15)).id;
+  const answer = (qid, body, day) => {
+    const { id } = db.run("INSERT INTO answers (question_id, author_id, kind, body, created_at, updated_at) VALUES (?, ?, 'instructor', ?, ?, ?)", qid, salma.id, body, daysAgo(day, 18), daysAgo(day, 18));
+    s.knowledge.indexAnswer(id);
+  };
+  const q1 = ask(L.id, 4, 'Should I use dropna() or fillna() for missing prices?', 'About 3% of my rows have no price.', 9);
+  answer(q1, "With only 3% missing, dropna() on the price column is usually fine. If those rows matter for other columns, fill the price with the product's median price instead, so one missing value doesn't throw away the whole order.", 8);
+  const q2 = ask(buyer.id, 5, 'What is the difference between groupby().sum() and pivot_table()?', '', 20);
+  answer(q2, 'groupby gives you one summary per group in a long list. pivot_table arranges the same kind of summary as a grid, with one dimension down the side and another across the top, which is easier to read when you compare two things like city and month.', 19);
+  const q3 = ask(buyer.id, 6, 'How do I make the bars in my chart horizontal?', 'My category names overlap.', 1);
+  db.run("INSERT INTO ai_drafts (question_id, body, citations_json, status) VALUES (?, ?, ?, 'draft')", q3,
+    'Use plt.barh() instead of plt.bar(), or kind="barh" when plotting from pandas. Horizontal bars leave room for long category names, and sorting them makes the chart easier to read.',
+    JSON.stringify([s.knowledge.lessonLabel(lesson(6)), s.knowledge.lessonLabel(lesson(7))].filter(Boolean)));
+
+  const news = db.run('INSERT INTO announcements (course_id, title, body, created_at) VALUES (?, ?, ?, ?)', py.id, 'New practice dataset',
+    'I added a cleaned version of the sales dataset to the "Analyzing sales data" lesson, so you can compare it with your own cleaning. See you at the live session!', daysAgo(2, 12)).id;
+  const start = new Date(now()); start.setUTCDate(start.getUTCDate() + 2); start.setUTCHours(16, 0, 0, 0);
+  db.run('INSERT INTO live_sessions (course_id, title, starts_at, minutes, link) VALUES (?, ?, ?, ?, ?)', py.id, 'Office hours: cleaning messy data',
+    sqlTime(start), 60, 'https://meet.example.com/manhal-python-office-hours');
+
+  const note = (kind, key, title, body, link, day) => db.run(`INSERT INTO notifications (user_id, kind, dedupe_key, title_en, title_ar, body_en, body_ar, link, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, L.id, kind, key, title.en, title.ar, body, body, link, daysAgo(day, 18));
+  note('answer', `answer:${q1}:seed`, { en: 'Salma Nour answered your question', ar: 'سلمى نور ردّت على سؤالك' },
+    'Should I use dropna() or fillna() for missing prices?', `/learn/${py.slug}/lesson/${lesson(4)}?tab=qa`, 8);
+  note('news', `news:${news}`, { en: 'Python for Data Analysis: New practice dataset', ar: 'بايثون لتحليل البيانات: New practice dataset' },
+    'I added a cleaned version of the sales dataset to the "Analyzing sales data" lesson.', `/learn/${py.slug}?tab=news`, 2);
+}
 
 /** Fill an empty database with the sample catalog and demo accounts. Returns false if data already exists. */
 export function seed(s, { now = () => new Date() } = {}) {
@@ -44,8 +80,8 @@ export function seed(s, { now = () => new Date() } = {}) {
           const k = line.indexOf(': ');
           const sid = db.run('INSERT INTO sections (course_id, position, title_en) VALUES (?, ?, ?)', id, si, line.slice(0, k)).id;
           line.slice(k + 2).split(' / ').forEach(title => {
-            db.run('INSERT INTO lessons (course_id, section_id, position, title_en, minutes, is_preview) VALUES (?, ?, ?, ?, ?, ?)',
-              id, sid, pos, title, 9 + ((id * 7 + pos * 11) % 19), pos === 0 ? 1 : 0);
+            db.run('INSERT INTO lessons (course_id, section_id, position, title_en, minutes, is_preview, body) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              id, sid, pos, title, 9 + ((id * 7 + pos * 11) % 19), pos === 0 ? 1 : 0, lessonNotes[c.slug]?.[pos] || '');
             pos++;
           });
         });
@@ -117,6 +153,10 @@ export function seed(s, { now = () => new Date() } = {}) {
       db.run(`INSERT INTO payouts (instructor_id, amount, method, details, status, requested_at, decided_at)
         VALUES (?, 1000, 'instapay', 'salma@instapay', 'paid', ?, ?)`, acct.instructor.id, daysAgo(50), daysAgo(48));
       db.run("INSERT INTO applications (name, email, topic, created_at) VALUES ('Hossam Fathy', 'hossam@example.com', 'Development', ?)", daysAgo(3));
+
+      // Nour's knowledge index for every course that has lesson notes, then sample community activity.
+      for (const slug of Object.keys(lessonNotes)) s.knowledge.reindexCourse(course(slug).id);
+      seedCommunity(s, { L, salma: acct.instructor, course, daysAgo, now });
     });
   } finally {
     s.mailer.send = realSend;
