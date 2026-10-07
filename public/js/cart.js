@@ -1,5 +1,5 @@
 import { store, t, tErr, esc, money, L, fmt, savePrefs } from './state.js';
-import { get, post, del } from './api.js';
+import { get, post, put, del } from './api.js';
 import { ic } from './icons.js';
 import { $, toast, toastErr, mini, openModal, closeModal, renderHeader } from './ui.js';
 import { navigate } from './router.js';
@@ -8,7 +8,16 @@ import { navigate } from './router.js';
 export async function refreshMe() {
   const me = await get('/api/me');
   store.me = me.user; store.csrf = me.csrf; store.cartCount = me.cartCount; store.config = me.config || {};
+  store.unread = me.unread || 0; store.mentor = me.mentor || store.mentor;
+  syncTimeZone();
   return me;
+}
+
+/** Keep the account's time zone in step with the browser, so reminders and quiet hours use local time. */
+function syncTimeZone() {
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { /* unknown */ }
+  if (store.me && tz && store.me.tz !== tz) { store.me.tz = tz; put('/api/account/tz', { tz }).catch(() => {}); }
 }
 
 /** Catalog cards, cached for search, the guest cart and the learning path. */
