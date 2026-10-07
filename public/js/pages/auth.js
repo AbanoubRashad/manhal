@@ -46,12 +46,17 @@ export function registerPage() {
     ${field('name', t('name'), 'autocomplete="name" required maxlength="80"')}
     ${field('email', t('email'), 'type="email" autocomplete="email" required')}
     ${field('password', t('password'), 'type="password" autocomplete="new-password" required minlength="8"', t('pw_hint'))}
+    ${field('birthYear', `${t('birth_year')} <span class="muted" style="font-weight:400">(${t('optional')})</span>`, `type="number" inputmode="numeric" min="1920" max="${new Date().getFullYear() - 5}" autocomplete="bday-year"`, t('birth_year_hint'))}
     <div class="form-msg"></div>
     <button class="btn btn-accent btn-block" type="submit" style="margin-top:16px">${t('sign_up')}</button>
     <p class="muted" style="font-size:.8rem;margin-top:12px">By creating an account you agree to the <a href="/terms">${t('terms')}</a> and <a href="/privacy">${t('privacy')}</a>.</p></form>
     <p class="alt">${t('have_account')} <a href="/login${next ? `?next=${encodeURIComponent(next)}` : ''}">${t('sign_in')}</a></p>`);
   if (store.lang === 'ar') $('#rf p.muted').innerHTML = `بإنشاء حساب فأنت توافق على <a href="/terms">${t('terms')}</a> و<a href="/privacy">${t('privacy')}</a>.`;
-  bindForm($('#rf'), async v => { await post('/api/auth/register', { ...v, lang: store.lang }); await afterSignIn(); });
+  bindForm($('#rf'), async v => {
+    const { birthYear, ...rest } = v;
+    await post('/api/auth/register', { ...rest, lang: store.lang, ...(birthYear ? { birthYear: Number(birthYear) } : {}) });
+    await afterSignIn();
+  });
 }
 
 export function forgotPage() {
