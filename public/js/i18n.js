@@ -386,3 +386,28 @@ ai_flags: 'البلاغات وتنبيهات الأمان', flag_kind: 'النو
 open_flag: 'مفتوح', resolved: 'اتحل', resolve: 'تم الحل', no_flags: 'مفيش بلاغات أو تنبيهات.',
 plan_plus_nour: 'وقت أكتر مع نور، مرشدتك بالذكاء الاصطناعي',
 });
+
+Object.assign(ERRORS_AR, {
+  "Nour isn't available right now. Please try again in a few minutes.": 'نور مش متاحة دلوقتي. جرّب تاني بعد شوية.',
+  'Nour is switched off right now.': 'نور مقفولة دلوقتي.',
+  "Nour isn't available on your account yet.": 'نور مش متاحة على حسابك لسه.',
+  'Enroll in this course to ask Nour about it.': 'سجّل في الدورة عشان تسأل نور عنها.',
+  'Enroll in this course to ask Nour about this lesson.': 'سجّل في الدورة عشان تسأل نور عن الدرس ده.',
+  "You're sending messages quickly. Wait a minute and try again.": 'بتبعت رسائل بسرعة. استنى دقيقة وجرّب تاني.',
+  "You've used today's messages with Nour.": 'استخدمت رسائل النهارده مع نور.',
+  'Nour is taking a short break this month. Your lessons, notes and reminders all still work.': 'نور واخدة استراحة قصيرة الشهر ده. دروسك وملاحظاتك وتذكيراتك كلها شغالة.',
+  'Type a question for Nour.': 'اكتب سؤال لنور.',
+  'Enroll in this course to ask a question.': 'سجّل في الدورة عشان تسأل.',
+  'Enroll in this course to see its questions.': 'سجّل في الدورة عشان تشوف أسئلتها.',
+  'Question must be at least 5 characters.': 'السؤال لازم يكون 5 حروف على الأقل.',
+  'This unsubscribe link is not valid.': 'رابط إلغاء الاشتراك ده مش صالح.',
+  'This confirmation link is invalid or has already been used.': 'رابط التأكيد ده مش صالح أو استُخدم قبل كده.',
+  'A parent contact is only for learners under 18.': 'ولي الأمر للمتعلّمين أقل من 18 سنة بس.',
+  "Use your parent's email, not your own.": 'استخدم بريد ولي أمرك، مش بريدك.',
+  'Write an answer first.': 'اكتب إجابة الأول.',
+  'The session must start in the future.': 'الجلسة لازم تبدأ في المستقبل.',
+  'Choose a valid start time.': 'اختار وقت بداية صحيح.',
+  'Use an https:// meeting link (Zoom, Google Meet or Teams).': 'استخدم رابط اجتماع يبدأ بـ https (Zoom أو Google Meet أو Teams).',
+  'Attach a .txt or .md file.': 'أرفق ملف txt أو md.',
+  "We couldn't find that notification.": 'لم نجد هذا الإشعار.',
+});
