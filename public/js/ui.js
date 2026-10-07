@@ -74,10 +74,12 @@ export function renderHeader() {
     <button class="langbtn" data-lang lang="${store.lang === 'ar' ? 'en' : 'ar'}">${t('lang_btn')}</button>
     <button class="ib" data-theme-t aria-label="${t('theme')}">${ic(isDark() ? 'sun' : 'moon')}</button>
     <button class="ib cartbtn" data-cart aria-label="${t('nav_cart')}">${ic('cart')}${n ? `<span class="badge">${fmt(n)}</span>` : ''}</button>
+    ${me ? `<div class="bellwrap"><button class="ib bellbtn" data-bell aria-haspopup="true" aria-expanded="false" aria-label="${t('notifications')}${store.unread ? ` (${fmt(store.unread)})` : ''}">${ic('bell')}${store.unread ? `<span class="badge">${fmt(store.unread)}</span>` : ''}</button></div>` : ''}
     ${me ? `<div class="umenu"><button class="avatar-sm" data-umenu aria-haspopup="true" aria-expanded="false" aria-label="${esc(me.name)}">${esc(initials(me.name))}</button></div>`
     : `<a class="signin" href="/login">${t('sign_in')}</a>`}
   </div></div>`;
-  $('#tabbar').innerHTML = `<a href="/" ${nav === 'home' ? 'aria-current="page"' : ''}>${ic('home')}${t('nav_home')}</a><a href="/explore" ${nav === 'explore' ? 'aria-current="page"' : ''}>${ic('compass')}${t('nav_explore')}</a><a href="/learning" ${nav === 'learning' ? 'aria-current="page"' : ''}>${ic('book')}${t('nav_learning')}</a><button data-cart>${ic('cart')}${t('nav_cart')}${n ? `<span class="badge">${fmt(n)}</span>` : ''}</button>`;
+  $('#tabbar').innerHTML = `<a href="/" ${nav === 'home' ? 'aria-current="page"' : ''}>${ic('home')}${t('nav_home')}</a><a href="/explore" ${nav === 'explore' ? 'aria-current="page"' : ''}>${ic('compass')}${t('nav_explore')}</a><a href="/learning" ${nav === 'learning' ? 'aria-current="page"' : ''}>${ic('book')}${t('nav_learning')}</a><button data-cart>${ic('cart')}${t('nav_cart')}${n ? `<span class="badge">${fmt(n)}</span>` : ''}</button>${me ? `<a href="/notifications" ${nav === 'alerts' ? 'aria-current="page"' : ''}>${ic('bell')}${t('alerts')}${store.unread ? `<span class="badge">${fmt(store.unread)}</span>` : ''}</a>` : ''}`;
+  $('#tabbar').classList.toggle('five', Boolean(me));
   renderBanner();
 }
 
