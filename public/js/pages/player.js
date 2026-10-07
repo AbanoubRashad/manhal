@@ -1,8 +1,10 @@
-import { t, tErr, esc, fmt, L } from '../state.js';
+import { store, t, tErr, esc, fmt, L } from '../state.js';
 import { get, post, put } from '../api.js';
 import { ic } from '../icons.js';
 import { app, $, $$, loading, errorView, toast, toastErr, requireUser } from '../ui.js';
-import { navigate, onLeave } from '../router.js';
+import { navigate, onLeave, current } from '../router.js';
+import { mountNour, resetNour } from '../nour.js';
+import { renderQA, renderNews } from '../community.js';
 import { openCertificate } from './certificate.js';
 
 let P = null;   // current player data
@@ -15,6 +17,9 @@ const ringHTML = p => {
 };
 const lessons = () => P.sections.flatMap((s, si) => s.lessons.map(l => ({ ...l, si, section: s })));
 const playable = l => !P.previewOnly || l.preview;
+const nourOk = () => Boolean(store.me && store.mentor.available);
+const tabs = () => [['ov', t('overview')], ...(P.previewOnly ? [] : [['nt', t('notes')]]), ...(store.me ? [['qa', t('qa_tab')]] : []),
+  ...(P.previewOnly ? [] : [['news', t('news_tab')]]), ...(nourOk() ? [['nour', t('nour_tab')]] : [])];
 
 function outlineHTML(cur) {
   let h = '';
@@ -84,15 +89,27 @@ async function renderLesson(l, all) {
   $('#pmain').innerHTML = `<div class="stage" id="stage"><div class="vmsg"><div class="spin"></div></div></div>
   <div class="ctrl" id="ctrl"></div>
   <div class="ltitle"><div class="eyebrow">${t('module')} ${fmt(l.si + 1)} · ${esc(L(l.section.title))}</div><h2>${esc(L(l.title))}</h2></div>
-  <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true" data-tab="ov">${t('overview')}</button>${P.previewOnly ? '' : `<button class="tab" role="tab" aria-selected="false" data-tab="nt">${t('notes')}</button>`}</div>
-  <div class="tabp" id="tab-ov"><p class="muted" style="max-width:65ch">${t('lesson_about')}</p><p style="margin-top:12px" class="muted">${ic('clock', 'sm')} ${fmt(l.minutes)} ${t('min')} · ${t('by')} ${esc(P.course.instructor.name)}</p>
+  <div class="tabs" role="tablist">${tabs().map(([k, label]) => `<button class="tab" role="tab" aria-selected="${k === 'ov'}" aria-controls="tab-${k}" id="t-${k}" data-tab="${k}">${k === 'nour' ? ic('spark', 'sm') : ''}${label}</button>`).join('')}</div>
+  <div class="tabp" id="tab-ov" role="tabpanel"><p class="muted" style="max-width:65ch">${t('lesson_about')}</p><p style="margin-top:12px" class="muted">${ic('clock', 'sm')} ${fmt(l.minutes)} ${t('min')} · ${t('by')} ${esc(P.course.instructor.name)}</p>
     ${next && playable(next) ? `<a class="btn btn-ghost" style="margin-top:16px" href="/learn/${P.course.slug}/lesson/${next.id}">${t('next')}${ic('chev', 'sm flip')}</a>`
     : !next && P.quizCount && !P.previewOnly ? `<a class="btn btn-brand" style="margin-top:16px" href="/learn/${P.course.slug}/quiz">${t('checkpoint')}${ic('chev', 'sm flip')}</a>` : ''}</div>
-  <div class="tabp" id="tab-nt" hidden><textarea id="notes" placeholder="${t('notes_ph')}" aria-label="${t('notes')}"></textarea><div class="saved" id="nsaved"></div></div>`;
-  $$('.tab').forEach(b => b.addEventListener('click', () => {
-    $$('.tab').forEach(x => x.setAttribute('aria-selected', x === b));
-    $('#tab-ov').hidden = b.dataset.tab !== 'ov'; $('#tab-nt').hidden = b.dataset.tab !== 'nt';
-  }));
+  <div class="tabp" id="tab-nt" role="tabpanel" hidden><textarea id="notes" placeholder="${t('notes_ph')}" aria-label="${t('notes')}"></textarea><div class="saved" id="nsaved"></div></div>
+  <div class="tabp" id="tab-qa" role="tabpanel" hidden></div><div class="tabp" id="tab-news" role="tabpanel" hidden></div><div class="tabp" id="tab-nour" role="tabpanel" hidden></div>
+  ${nourOk() ? `<button class="nour-fab" data-gonour aria-label="${t('ask_nour')}">${ic('spark')}<span>${t('ask_nour')}</span></button>` : ''}`;
+  const show = (k, opts = {}) => {
+    if (!$(`#tab-${k}`)) k = 'ov';
+    $$('.tab').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === k));
+    $$('.tabp').forEach(p => { p.hidden = p.id !== `tab-${k}`; });
+    if (k === 'qa') renderQA($('#tab-qa'), { course: P.course, lessonId: l.id, canAsk: !P.previewOnly, prefill: opts.prefill || '' });
+    if (k === 'news') renderNews($('#tab-news'), P.course);
+    if (k === 'nour') mountNour($('#tab-nour'), { course: P.course, lessonId: l.id, onAsk: text => show('qa', { prefill: text }) });
+    $('[data-gonour]')?.toggleAttribute('hidden', k === 'nour');
+    if (opts.scroll) $('.tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  $$('.tab').forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+  $('[data-gonour]')?.addEventListener('click', () => show('nour', { scroll: true }));
+  const want = current.query.get('tab');
+  if (want) show(want === 'notes' ? 'nt' : want, { scroll: true });
 
   const doneBtn = () => P.previewOnly ? '' : `<button class="btn ${done ? 'donebtn' : 'btn-accent'}" id="vm">${done ? ic('check') + t('done_lbl') : t('mark_done')}</button>`;
   let video;
@@ -242,7 +259,14 @@ async function renderQuiz() {
   $('#pmain').innerHTML = `<form class="quiz" id="qf"><div class="eyebrow">${t('checkpoint')}</div><h2>${esc(L(P.course.title))}</h2>
   <p class="muted" style="margin-top:6px">${t('quiz_intro', { n: fmt(q.questions.length), p: fmt(q.passMark) })}</p>
   ${q.questions.map((x, qi) => `<fieldset class="qq" style="border:0;padding:0;margin-inline:0"><legend style="padding:0"><p>${fmt(qi + 1)}. ${esc(x.prompt)}</p></legend>${x.options.map((o, oi) => `<label class="opt" id="o${qi}-${oi}"><input type="radio" name="q${qi}" value="${oi}">${esc(o)}</label>`).join('')}</fieldset>`).join('')}
-  <div id="qres" aria-live="polite"></div><div class="mrow" style="justify-content:flex-start"><button class="btn btn-accent" type="submit" id="qsub">${t('submit')}</button></div></form>`;
+  <div id="qres" aria-live="polite"></div><div class="mrow" style="justify-content:flex-start"><button class="btn btn-accent" type="submit" id="qsub">${t('submit')}</button></div></form>
+  ${nourOk() ? `<details class="box nour-hint" id="qnour"><summary>${ic('spark')}<b>${t('quiz_stuck')}</b><span class="muted">${t('quiz_stuck_sub')}</span></summary><div id="qnour-b"></div></details>` : ''}`;
+  const qn = $('#qnour');
+  if (qn) {
+    const open = () => mountNour($('#qnour-b'), { course: P.course, lessonId: null, onAsk: () => {} });
+    qn.addEventListener('toggle', () => { if (qn.open) open(); });
+    if (current.query.get('nour')) { qn.open = true; qn.scrollIntoView({ block: 'start' }); }
+  }
   $('#qf').addEventListener('submit', async ev => {
     ev.preventDefault();
     const answers = q.questions.map((_, qi) => { const r = $(`input[name="q${qi}"]:checked`); return r ? Number(r.value) : null; });
@@ -264,4 +288,4 @@ async function renderQuiz() {
   });
 }
 
-export function resetPlayerCache() { P = null; }
+export function resetPlayerCache() { P = null; resetNour(); }
