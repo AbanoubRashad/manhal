@@ -5,7 +5,7 @@ export const slugify = s => String(s).toLowerCase().normalize('NFKD').replace(/&
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70) || 'course';
 
 /** Instructor studio: create and edit courses, curriculum and checkpoint quiz. */
-export function studioService({ db, catalog }) {
+export function studioService({ db, catalog, knowledge }) {
   function own(user, id) {
     const c = catalog.row(id);
     if (!c) throw notFound("We couldn't find that course.");
@@ -41,11 +41,15 @@ export function studioService({ db, catalog }) {
         lessons: lessons.filter(l => l.section_id === s.id).map(l => ({
           id: l.id, title_en: l.title_en, title_ar: l.title_ar, minutes: l.minutes, is_preview: Boolean(l.is_preview),
           video_provider: l.video_provider, video_url: l.video_url, video_ref: l.video_ref,
+          body: l.body, transcript: l.transcript,
+          files: db.all('SELECT id, name, length(text) AS size FROM lesson_files WHERE lesson_id = ? ORDER BY id', l.id),
         })),
       })),
       quiz: db.all('SELECT * FROM quiz_questions WHERE course_id = ? ORDER BY position', id)
         .map(q => ({ prompt: q.prompt, options: JSON.parse(q.options_json), answer: q.answer })),
       problems: publishProblems(id),
+      aiAnswerMode: c.ai_answer_mode,
+      questions: db.get('SELECT COUNT(*) AS n FROM questions WHERE course_id = ?', id).n,
       stats: db.get(`SELECT (SELECT COUNT(*) FROM enrollments WHERE course_id = ?) AS learners,
         (SELECT COALESCE(SUM(amount),0) FROM earnings WHERE course_id = ?) AS earned`, id, id),
     };
@@ -98,14 +102,15 @@ export function studioService({ db, catalog }) {
           keepS.add(sid);
           for (const l of s.lessons) {
             const vals = [sid, pos++, l.title_en, l.title_ar || '', l.minutes, l.is_preview ? 1 : 0,
-              l.video_provider === 'bunny' ? 'bunny' : 'url', l.video_provider === 'bunny' ? '' : (l.video_url || ''), l.video_provider === 'bunny' ? l.video_ref : ''];
+              l.video_provider === 'bunny' ? 'bunny' : 'url', l.video_provider === 'bunny' ? '' : (l.video_url || ''), l.video_provider === 'bunny' ? l.video_ref : '',
+              l.body || '', l.transcript || ''];
             if (l.id && oldLessons.has(l.id)) {
               db.run(`UPDATE lessons SET section_id = ?, position = ?, title_en = ?, title_ar = ?, minutes = ?, is_preview = ?,
-                video_provider = ?, video_url = ?, video_ref = ? WHERE id = ?`, ...vals, l.id);
+                video_provider = ?, video_url = ?, video_ref = ?, body = ?, transcript = ? WHERE id = ?`, ...vals, l.id);
               keepL.add(l.id);
             } else {
-              keepL.add(db.run(`INSERT INTO lessons (section_id, position, title_en, title_ar, minutes, is_preview, video_provider, video_url, video_ref, course_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, ...vals, id).id);
+              keepL.add(db.run(`INSERT INTO lessons (section_id, position, title_en, title_ar, minutes, is_preview, video_provider, video_url, video_ref, body, transcript, course_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, ...vals, id).id);
             }
           }
         });
@@ -119,6 +124,7 @@ export function studioService({ db, catalog }) {
           if (p.length) throw badRequest(`This course is live, so it must stay complete: ${p.join(' ')}`);
         }
       });
+      knowledge?.reindexCourse(id);
       return full(id);
     },
 
