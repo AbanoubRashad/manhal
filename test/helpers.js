@@ -11,13 +11,13 @@ export const PAYMOB_ENV = {
 };
 
 /** A fresh in-memory app. `env` overrides config; `fetch` mocks outgoing HTTP. */
-export function makeApp({ env = {}, fetch, seeded = true } = {}) {
+export function makeApp({ env = {}, fetch, seeded = true, now } = {}) {
   const db = openDb(':memory:');
   const log = memoryLogger();
   migrate(db);
   const config = loadConfig({ BASE_URL: 'https://manhal.test', ...env });
-  const app = createApp({ db, config, log, fetch });
-  if (seeded) seed(app.services);
+  const app = createApp({ db, config, log, fetch, ...(now ? { now } : {}) });
+  if (seeded) seed(app.services, now ? { now } : {});
   const s = app.services;
 
   /** Make a request. Pass `as` (a session from login()) to act as a user. */
