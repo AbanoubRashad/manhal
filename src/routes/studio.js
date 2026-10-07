@@ -12,6 +12,8 @@ const lesson = {
   video_provider: { type: 'string', label: 'Video source', oneOf: ['url', 'bunny'], default: 'url' },
   video_url: { type: 'string', label: 'Video link', max: 500, default: '' },
   video_ref: { type: 'string', label: 'Bunny video ID', max: 64, default: '' },
+  body: { type: 'string', label: 'Lesson text', max: 20_000, default: '' },
+  transcript: { type: 'string', label: 'Transcript', max: 60_000, default: '' },
 };
 const section = {
   id: { type: 'int', min: 1 },
