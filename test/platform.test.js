@@ -17,7 +17,7 @@ test('migrations run once and keep existing data', () => {
   db.run("INSERT INTO schema_migrations (version, name) VALUES (1, 'core')");
   db.run("INSERT INTO users (email, name, password_hash) VALUES ('old@example.com', 'Old User', 'x')");
   const applied = migrate(db);
-  assert.deepEqual(applied, [2, 3, 4, 5]);
+  assert.deepEqual(applied, [2, 3, 4, 5, 6]);
   const u = db.get("SELECT * FROM users WHERE email = 'old@example.com'");
   assert.equal(u.name, 'Old User');
   assert.equal(u.lang, 'en');
