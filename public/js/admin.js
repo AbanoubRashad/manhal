@@ -4,8 +4,8 @@ import { ic } from './icons.js';
 import { app, $, $$, badge, footer, loading, errorView, requireUser, toast, toastErr, bindForm, okMsg, field } from './ui.js';
 import { navigate, current } from './router.js';
 
-const TABS = ['overview', 'users', 'courses', 'orders', 'coupons', 'payouts', 'applications', 'settings'];
-const tabLabel = k => t(k === 'overview' ? 'overview_tab' : k);
+const TABS = ['overview', 'users', 'courses', 'orders', 'coupons', 'payouts', 'applications', 'ai', 'settings'];
+const tabLabel = k => t(k === 'overview' ? 'overview_tab' : k === 'ai' ? 'ai_tab' : k);
 
 function shell(tab, body) {
   app().innerHTML = `<section class="wrap"><div class="dash-head"><div><div class="eyebrow">${t('admin')}</div><h1>${t('admin_title')}</h1></div></div>
@@ -122,6 +122,47 @@ const VIEWS = {
       : `<div class="empty"><p>–</p></div>`);
     $$('[data-app]').forEach(s => s.addEventListener('change', async () => {
       try { await patch(`/api/admin/applications/${s.dataset.app}`, { status: s.value }); toast(t('saved')); } catch (e) { toastErr(e); }
+    }));
+  },
+
+  async ai() {
+    const o = await get('/api/admin/ai');
+    const usd = n => `$${Number(n).toFixed(n < 1 ? 4 : 2)}`;
+    const pct = Math.min(100, Math.round(o.budget.ratio * 100));
+    const tile = (icon, v, label, hot) => `<div class="tile"><span class="ti ${hot ? 'hot' : ''}">${ic(icon)}</span><div><b>${v}</b><span>${label}</span></div></div>`;
+    const pctCell = v => (v == null ? '–' : `${fmt(v)}%`);
+    const flags = o.flags.length ? table([t('flag_kind'), t('learner'), t('course'), t('date'), t('details'), t('status'), ''], o.flags.map(f => `<tr>
+      <td>${f.kind === 'distress' ? `<span class="st-badge st-failed">${t('flag_distress')}</span>` : `<span class="st-badge st-pending">${t('flag_report')}</span>`}</td>
+      <td>${esc(f.user || '–')}</td><td>${esc(f.course || '–')}</td><td>${date(f.createdAt)}</td>
+      <td style="max-width:360px">${f.kind === 'report' ? `<b>${esc(f.reason)}</b>${f.reply ? `<br><small class="muted">${esc(f.reply.slice(0, 220))}${f.reply.length > 220 ? '…' : ''}</small>` : ''}` : `<small class="muted">${t('distress_private')}</small>`}</td>
+      <td>${f.status === 'open' ? `<span class="st-badge st-pending">${t('open_flag')}</span>` : `<span class="st-badge st-paid">${t('resolved')}</span>`}</td>
+      <td>${f.status === 'open' ? `<button class="mini-btn" data-resolve="${f.id}">${t('resolve')}</button>` : ''}</td></tr>`)) : `<div class="empty"><p>${t('no_flags')}</p></div>`;
+    const im = o.impact;
+    shell('ai', `<p class="notice">${ic('spark')}<span>${o.provider === 'demo' ? t('ai_demo_notice') : t('ai_live_notice', { chat: esc(o.models.chat), fast: esc(o.models.fast) })}</span></p>
+    <div class="tiles">${tile('chat', fmt(o.today.messages), t('ai_msgs_today'))}${tile('coin', usd(o.today.cost), t('ai_cost_today'))}${tile('chat', fmt(o.month.messages), t('ai_msgs_month'))}${tile('coin', usd(o.month.cost), t('ai_cost_month'), pct >= 80)}</div>
+    <div class="dash-grid">
+      <div>
+        <div class="panel"><h3>${t('ai_budget')} <small>${usd(o.budget.spent)} / $${fmt(o.budget.limit)}</small></h3><div class="bar budget ${pct >= 100 ? 'over' : pct >= 80 ? 'warn' : ''}"><i style="width:${pct}%"></i></div>
+          <p class="muted" style="font-size:.85rem">${pct >= 100 ? t('ai_budget_over') : t('ai_budget_note')}</p></div>
+        <div class="panel"><h3>${t('ai_by_feature')}</h3>${o.byFeature.length ? table([t('feature'), '#' + t('calls'), '#' + t('output_tokens'), '#' + t('cost')], o.byFeature.map(f => `<tr><td>${t('feat_' + f.feature)}</td><td class="num">${fmt(f.calls)}</td><td class="num">${fmt(f.output)}</td><td class="num">${usd(f.cost)}</td></tr>`)) : `<p class="muted">${t('ai_no_usage')}</p>`}</div>
+        <div class="panel"><h3>${t('ai_top_users')}</h3>${o.topUsers.length ? table([t('name'), '#' + t('calls'), '#' + t('cost')], o.topUsers.map(u => `<tr><td>${esc(u.name)}</td><td class="num">${fmt(u.calls)}</td><td class="num">${usd(u.cost)}</td></tr>`)) : `<p class="muted">${t('ai_no_usage')}</p>`}</div>
+      </div>
+      <div>
+        <div class="panel"><h3>${t('ai_switches')}</h3><p class="muted" style="font-size:.85rem;margin-bottom:8px">${t('ai_switches_sub')}</p>
+          ${Object.entries(o.features).map(([k, on]) => `<label class="switch row"><span><b>${t('sw_' + k)}</b><small class="muted">${t('sw_' + k + '_d')}</small></span><input type="checkbox" data-feat="${k}" ${on ? 'checked' : ''}></label>`).join('')}</div>
+        <div class="panel"><h3>${t('impact')} <small>${im.on ? t('exp_on') : t('exp_off')}</small></h3>
+          ${table([t('metric'), `#${t('group_mentor')} (${fmt(im.groups[0].size)})`, `#${t('group_control')} (${fmt(im.groups[1].size)})`], [
+            ['m_lessons7', 'lessons7'], ['m_lessons30', 'lessons30'], ['m_course_done', 'courseCompletion'], ['m_repeat', 'repeatPurchase'], ['m_click', 'nudgeClickRate'], ['m_helpful', 'helpful'],
+          ].map(([label, key]) => `<tr><td>${t(label)}</td><td class="num">${pctCell(im.groups[0][key])}</td><td class="num">${pctCell(im.groups[1][key])}</td></tr>`))}
+          ${im.tooEarly ? `<p class="hint" style="margin-top:8px">${ic('info', 'sm')} ${t('too_early')}</p>` : ''}</div>
+      </div>
+    </div>
+    <h2 style="margin:28px 0 12px">${t('ai_flags')}</h2>${flags}`);
+    $$('[data-feat]').forEach(c => c.addEventListener('change', async () => {
+      try { await put('/api/admin/ai/features', { key: c.dataset.feat, on: c.checked }); toast(t('saved')); } catch (e) { toastErr(e); c.checked = !c.checked; }
+    }));
+    $$('[data-resolve]').forEach(b => b.addEventListener('click', async () => {
+      try { await post(`/api/admin/ai/flags/${b.dataset.resolve}/resolve`); reload(); } catch (e) { toastErr(e); }
     }));
   },
 
