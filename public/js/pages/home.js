@@ -50,7 +50,7 @@ export async function homePage() {
   <section class="wrap sec"><div class="sec-head"><h2>${t('plans_title')}</h2></div>
     <div class="plans">
       <div class="plan"><h3>${t('plan_free')}</h3><div class="amt">${fmt(0)} <small>${t('currency')}</small></div><p class="muted">${t('plan_free_d')}</p><a class="btn btn-ghost" href="/explore?price=free">${t('plan_free_btn')}</a></div>
-      <div class="plan hi"><h3>${t('plan_plus')}</h3><div class="amt">${fmt(199)} <small>${t('currency')} ${t('per_month')}</small></div><p class="muted">${t('plan_plus_d')}</p><button class="btn btn-accent" data-soon>${t('plan_plus_btn')}</button></div>
+      <div class="plan hi"><h3>${t('plan_plus')}</h3><div class="amt">${fmt(199)} <small>${t('currency')} ${t('per_month')}</small></div><p class="muted">${t('plan_plus_d')}</p><p class="plan-perk">${ic('spark', 'sm')}${t('plan_plus_nour')}</p><button class="btn btn-accent" data-soon>${t('plan_plus_btn')}</button></div>
       <div class="plan"><h3>${t('plan_team')}</h3><div class="amt">${t('custom')}</div><p class="muted">${t('plan_team_d')}</p><button class="btn btn-ghost" data-soon>${t('plan_team_btn')}</button></div>
     </div></section>
   <section class="wrap sec"><div class="cta"><div><h2>${t('teach_cta_t')}</h2><p>${t('teach_cta_d')}</p></div><a class="btn btn-accent" href="/teach">${t('teach_cta_btn')}</a></div></section>
