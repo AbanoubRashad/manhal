@@ -3,6 +3,7 @@ import { get } from '../api.js';
 import { ic } from '../icons.js';
 import { app, $, card, cover, footer, loading, errorView } from '../ui.js';
 import { addToCart, enrollFree, toggleWish } from '../cart.js';
+import { liveHTML, wireLive } from '../community.js';
 
 function buyButtons(c) {
   if (c.enrolled) return `<a class="btn btn-accent btn-block" href="/learn/${c.slug}">${c.progress?.percent > 0 ? t('resume') : t('go_course')}</a>`;
@@ -17,6 +18,7 @@ export async function coursePage(m) {
   let c, cats;
   try {
     [{ course: c }, { categories: cats }] = await Promise.all([get(`/api/courses/${m[1]}`), get('/api/categories')]);
+    c.live = (await get(`/api/courses/${c.id}/live`).catch(() => ({ sessions: [] }))).sessions;
   } catch (e) { return errorView(e); }
   const cat = cats.find(x => x.key === c.category);
   const lessons = c.sections.flatMap(s => s.lessons);
@@ -34,6 +36,7 @@ export async function coursePage(m) {
   <section class="wrap dgrid dbody">
     <div class="dmain">
       ${learn.length ? `<div class="box"><h2 style="margin:0">${t('learn_title')}</h2><ul class="checks">${learn.map(x => `<li>${ic('check')}<span>${esc(L(x.title))}</span></li>`).join('')}</ul></div>` : ''}
+      ${c.live.length ? `<div class="box" id="live"><h2 style="margin:0 0 4px">${t('live_sessions')}</h2><p class="muted" style="margin-bottom:12px">${c.enrolled ? t('live_sub_enrolled') : t('live_sub_guest')}</p>${liveHTML(c.live)}</div>` : ''}
       <h2>${t('curr_title')}</h2>
       <p class="muted" style="margin-top:-8px">${fmt(c.sections.length)} ${t('sections_n')} · ${fmt(lessons.length)} ${t('lessons_n')} · ${dur(c.minutes)}</p>
       <div class="acc">${c.sections.map((s, si) => `<details ${si === 0 ? 'open' : ''}><summary><span>${t('module')} ${fmt(si + 1)}: ${esc(L(s.title))}</span><span class="muted">${fmt(s.lessons.length)} ${t('lessons_n')} · ${dur(s.lessons.reduce((a, l) => a + l.minutes, 0))}</span></summary>
@@ -59,6 +62,8 @@ export async function coursePage(m) {
     $('#b-buy')?.addEventListener('click', async () => { await addToCart(c, { open: true }); $('#buybtns').innerHTML = buyButtons(c); wire(); });
   };
   wire();
+  if (c.live.length) wireLive($('#live'), c.live);
+  if (location.hash === '#live') $('#live')?.scrollIntoView({ block: 'start' });
   $('#b-wish').addEventListener('click', async e => {
     const btn = e.currentTarget;
     const on = await toggleWish(c.id, c.wished);
