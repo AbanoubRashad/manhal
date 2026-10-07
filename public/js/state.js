@@ -6,7 +6,7 @@ try { prefs = JSON.parse(localStorage.getItem(LS)) || {}; } catch { /* private m
 
 /** App-wide state. `me` comes from /api/me; guestCart holds course ids before sign-in. */
 export const store = {
-  me: null, csrf: null, cartCount: 0, config: {},
+  me: null, csrf: null, cartCount: 0, config: {}, unread: 0, mentor: { available: true, demo: true },
   lang: prefs.lang || (navigator.language?.startsWith('ar') ? 'ar' : 'en'),
   theme: prefs.theme || null,
   guestCart: Array.isArray(prefs.guestCart) ? prefs.guestCart : [],
