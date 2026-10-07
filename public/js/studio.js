@@ -1,5 +1,5 @@
 import { store, t, tErr, esc, fmt, money, egp, L, date } from './state.js';
-import { get, post, put } from './api.js';
+import { get, post, put, del } from './api.js';
 import { ic } from './icons.js';
 import { app, $, $$, cover, badge, footer, loading, errorView, requireUser, toast, openModal, closeModal, bindForm, okMsg, field } from './ui.js';
 import { navigate, onLeave, current } from './router.js';
@@ -16,6 +16,7 @@ const subnav = () => `<nav class="subnav" aria-label="${t('studio')}"><a href="/
 const head = (title, extra = '') => `<div class="dash-head"><div><div class="eyebrow">${t('studio')}</div><h1>${title}</h1><p class="muted">${t('studio_sub')}</p></div>${extra}</div>`;
 
 /* ---------- course list ---------- */
+export { guard, head, subnav };
 export async function studioPage() {
   if (!guard()) return;
   loading();
@@ -24,7 +25,7 @@ export async function studioPage() {
   app().innerHTML = `<section class="wrap">${head(t('studio'), `<button class="btn btn-accent" id="newc">${ic('plus')}${t('new_course')}</button>`)}${subnav()}
   ${courses.length ? `<div class="sc-list sec">${courses.map(c => `<div class="sc">${cover(c)}<div style="min-width:0"><h3>${esc(L(c.title))}</h3>
     <div class="meta" style="margin-top:6px">${badge(c.status)}<span>${money(c.price)}</span><span>${fmt(c.lessons)} ${t('lessons_n')}</span><span>${fmt(c.enrolledCount)} ${t('learners_n')}</span><span>${egp(c.earned)} ${t('earned')}</span></div></div>
-    <div class="actions"><a class="btn btn-ghost" href="/courses/${c.slug}">${t('view_page')}</a><a class="btn btn-brand" href="/studio/courses/${c.id}">${t('edit')}</a></div></div>`).join('')}</div>`
+    <div class="actions"><a class="btn btn-ghost" href="/studio/courses/${c.id}/community">${ic('chat')}${t('community')}</a><a class="btn btn-ghost" href="/courses/${c.slug}">${t('view_page')}</a><a class="btn btn-brand" href="/studio/courses/${c.id}">${t('edit')}</a></div></div>`).join('')}</div>`
     : `<div class="empty sec"><p>${t('no_courses_studio')}</p></div>`}</section>${footer()}`;
   $('#newc').addEventListener('click', newCourseModal);
 }
@@ -46,6 +47,7 @@ function newCourseModal() {
 
 /* ---------- course editor ---------- */
 let E = null, dirty = false;
+const openMat = new Set(); // lesson material panels left open between re-renders
 const warn = e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
 
 function setPath(obj, path, value) {
@@ -77,7 +79,21 @@ function lessonRow(si, li, l) {
     ${l.video_provider === 'bunny' ? inp(`${k}.video_ref`, l.video_ref, `placeholder="${t('bunny_id')}" aria-label="${t('bunny_id')}" dir="ltr"`) : inp(`${k}.video_url`, l.video_url, `type="url" placeholder="${t('video_link')}" aria-label="${t('src_url')}" dir="ltr"`)}
     <label class="chk"><input type="checkbox" data-k="${k}.is_preview" ${l.is_preview ? 'checked' : ''}>${t('preview_lesson')}</label>
     <span class="actions" style="margin-inline-start:auto"><button type="button" class="mini-btn" data-act="lup" data-s="${si}" data-l="${li}" aria-label="${t('move_up')}">${ic('up')}</button><button type="button" class="mini-btn" data-act="ldown" data-s="${si}" data-l="${li}" aria-label="${t('move_down')}">${ic('down')}</button><button type="button" class="mini-btn danger" data-act="ldel" data-s="${si}" data-l="${li}" aria-label="${t('remove')}">${ic('trash')}</button></span></div>
+    ${materialHTML(k, l)}
   </div>`;
+}
+
+/** Lesson text, transcript and text files: the material Nour answers from. */
+function materialHTML(k, l) {
+  const size = (l.body || '').length + (l.transcript || '').length + (l.files || []).reduce((a, f) => a + f.size, 0);
+  return `<details class="les-mat" data-mat="${k}" ${openMat.has(k) ? 'open' : ''}><summary>${ic('spark', 'sm')}${t('lesson_material')} <span class="muted">· ${size ? t('chars_n', { n: fmt(size) }) : t('material_empty')}</span></summary>
+    <div class="field"><label>${t('lesson_text')}</label><textarea data-k="${k}.body" rows="5" maxlength="20000" placeholder="${t('lesson_text_ph')}">${esc(l.body || '')}</textarea></div>
+    <div class="field"><label>${t('transcript')}</label><textarea data-k="${k}.transcript" rows="3" maxlength="60000" placeholder="${t('transcript_ph')}">${esc(l.transcript || '')}</textarea></div>
+    <div class="field"><span style="font-weight:600;font-size:.88rem">${t('lesson_files')}</span>
+      ${(l.files || []).map(f => `<div class="kv"><span>${esc(f.name)} <small class="muted">${t('chars_n', { n: fmt(f.size) })}</small></span><button type="button" class="mini-btn danger" data-fdel="${f.id}">${ic('trash')}</button></div>`).join('')}
+      ${l.id ? `<label class="mini-btn" style="width:max-content;cursor:pointer">${ic('plus')}${t('attach_file')}<input type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" data-fadd="${l.id}" hidden></label>` : `<span class="hint">${t('save_before_files')}</span>`}
+      <span class="hint">${t('material_hint')}</span></div>
+  </details>`;
 }
 
 function renderEditor() {
@@ -109,7 +125,8 @@ function renderEditor() {
       <div class="box"><div class="kv"><span class="muted">${t('status')}</span>${badge(c.status)}</div><div class="kv"><span class="muted">${t('learners_n')}</span><b>${fmt(c.stats.learners)}</b></div><div class="kv"><span class="muted">${t('earned')}</span><b>${egp(c.stats.earned)}</b></div>
         <div style="display:grid;gap:8px;margin-top:14px"><button class="btn btn-accent" id="save">${t('save_changes')}</button>
         ${c.status === 'published' ? `<button class="btn btn-ghost" id="unpub">${t('unpublish')}</button>` : `<button class="btn btn-brand" id="pub">${t('publish')}</button>`}
-        <a class="btn btn-ghost" href="/courses/${c.slug}" target="_blank" rel="noopener">${t('view_page')}</a></div>
+        <a class="btn btn-ghost" href="/courses/${c.slug}" target="_blank" rel="noopener">${t('view_page')}</a>
+        <a class="btn btn-ghost" href="/studio/courses/${c.id}/community">${ic('chat')}${t('community')}${c.questions ? ` (${fmt(c.questions)})` : ''}</a></div>
         <div class="form-msg" id="edmsg"></div></div>
       ${c.problems.length ? `<div class="box"><h3 style="font-size:1rem;margin-bottom:8px">${t('problems_title')}</h3><ul class="problems">${c.problems.map(p => `<li>${esc(tErr(p))}</li>`).join('')}</ul></div>` : ''}
     </aside>
@@ -128,6 +145,24 @@ function renderEditor() {
   });
   $$('[data-ans]').forEach(el => el.addEventListener('change', () => { E.quiz[Number(el.dataset.ans)].answer = Number(el.value); markDirty(); }));
   $$('[data-act]').forEach(b => b.addEventListener('click', () => structural(b.dataset)));
+  $$('[data-mat]').forEach(d => d.addEventListener('toggle', () => { if (d.open) openMat.add(d.dataset.mat); else openMat.delete(d.dataset.mat); }));
+  $$('[data-fadd]').forEach(inp => inp.addEventListener('change', async () => {
+    const f = inp.files[0];
+    if (!f) return;
+    if (f.size > 60_000) return toast(t('file_too_big'), 'info');
+    try {
+      const { files } = await post(`/api/studio/lessons/${inp.dataset.fadd}/files`, { name: f.name, text: await f.text() });
+      E.sections.forEach(sec => sec.lessons.forEach(l => { if (l.id === Number(inp.dataset.fadd)) l.files = files; }));
+      renderEditor(); toast(t('file_added'));
+    } catch (e) { toast(tErr(e.message), 'info'); }
+  }));
+  $$('[data-fdel]').forEach(b => b.addEventListener('click', async () => {
+    try {
+      await del(`/api/studio/files/${b.dataset.fdel}`);
+      E.sections.forEach(sec => sec.lessons.forEach(l => { l.files = (l.files || []).filter(f => f.id !== Number(b.dataset.fdel)); }));
+      renderEditor();
+    } catch (e) { toast(tErr(e.message), 'info'); }
+  }));
   $('#save').addEventListener('click', save);
   $('#pub')?.addEventListener('click', () => setStatus('published'));
   $('#unpub')?.addEventListener('click', () => setStatus('draft'));
