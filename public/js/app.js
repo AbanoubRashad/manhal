@@ -17,6 +17,9 @@ import { legalPage } from './pages/legal.js';
 import { devMailPage } from './pages/devmail.js';
 import { studioPage, editorPage, earningsPage } from './studio.js';
 import { adminPage } from './admin.js';
+import { notificationsPage, notificationLinkPage, toggleBell, onNotificationClick } from './notifications.js';
+import { unsubscribePage, parentConfirmPage } from './pages/mentor.js';
+import { communityPage } from './studio-community.js';
 
 route(/^\/$/, homePage, { nav: 'home' });
 route(/^\/explore$/, explorePage, { nav: 'explore' });
@@ -38,13 +41,21 @@ route(/^\/dev\/mail$/, devMailPage);
 route(/^\/studio$/, studioPage, { nav: 'teach' });
 route(/^\/studio\/earnings$/, earningsPage, { nav: 'teach' });
 route(/^\/studio\/courses\/(\d+)$/, editorPage, { nav: 'teach' });
+route(/^\/studio\/courses\/(\d+)\/community$/, communityPage, { nav: 'teach' });
+route(/^\/notifications$/, notificationsPage, { nav: 'alerts' });
+route(/^\/n\/(\d+)$/, notificationLinkPage);
+route(/^\/mentor\/unsubscribe$/, unsubscribePage);
+route(/^\/parent\/confirm$/, parentConfirmPage);
 route(/^\/admin(?:\/(\w+))?$/, adminPage);
 
 /* ---------- global events ---------- */
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-cart],[data-closecart],[data-rm],[data-rmcoupon],[data-checkout],[data-close],[data-lang],[data-theme-t],[data-pal],[data-wish],[data-umenu],[data-logout],[data-resend],[data-resetdemo]');
+  const nEl = e.target.closest('[data-nopen],[data-nreadall]');
+  if (nEl) { e.preventDefault(); onNotificationClick(nEl); return; }
+  const el = e.target.closest('[data-cart],[data-closecart],[data-rm],[data-rmcoupon],[data-checkout],[data-close],[data-lang],[data-theme-t],[data-pal],[data-wish],[data-umenu],[data-logout],[data-resend],[data-resetdemo],[data-bell]');
   if (!el) {
     if (!e.target.closest('.umenu')) document.querySelector('.menu')?.remove();
+    if (!e.target.closest('.bellwrap')) document.querySelector('.npanel')?.remove();
     return;
   }
   const d = el.dataset;
@@ -55,7 +66,8 @@ document.addEventListener('click', async e => {
   else if ('checkout' in d) checkout();
   else if ('close' in d) closeModal();
   else if ('pal' in d) openPal();
-  else if ('umenu' in d) userMenu(el);
+  else if ('umenu' in d) { document.querySelector('.npanel')?.remove(); userMenu(el); }
+  else if ('bell' in d) toggleBell(el);
   else if ('logout' in d) logout();
   else if ('resend' in d) resendVerification();
   else if ('resetdemo' in d) window.__manhalDemo?.reset();
@@ -81,7 +93,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (!$('#pal').hidden) closePal();
     else if (!$('#modal').hidden) closeModal();
-    else { closeCart(); document.querySelector('.menu')?.remove(); }
+    else { closeCart(); document.querySelector('.menu')?.remove(); document.querySelector('.npanel')?.remove(); }
   }
 });
 
