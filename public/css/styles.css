@@ -860,3 +860,37 @@ main:has(>footer:last-child){padding-bottom:0}
 .lv-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
 @media (max-width:560px){.live{grid-template-columns:38px minmax(0,1fr)}.live .actions{grid-column:1/-1;justify-content:flex-start}}
 
+/* studio community */
+.draft{margin-top:10px;padding:12px;border-radius:12px;border:1.5px dashed color-mix(in srgb,var(--accent) 60%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+.draft textarea,.ansf textarea,.corr textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);margin-top:6px;resize:vertical}
+.ansf,.corr{display:grid;gap:8px;margin-top:10px;justify-items:start}
+.opt-card{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-top:8px;cursor:pointer;background:var(--surface)}
+.opt-card:has(input:checked){border-color:var(--brand);background:var(--brand-soft)}
+.opt-card:has(input:disabled){opacity:.55;cursor:not-allowed}
+.opt-card input{margin-top:4px;accent-color:var(--brand)}
+.field .opt-card input,.opt-card input{width:auto;flex:none;padding:0}
+.switch input,.field .switch input{width:18px;height:18px;flex:none;padding:0}
+.opt-card small{display:block;font-size:.82rem}
+.switch{display:flex;gap:10px;align-items:center;margin-top:12px;cursor:pointer;font-weight:600}
+.switch input{width:18px;height:18px;accent-color:var(--brand);flex:none}
+.switch.row{justify-content:space-between;padding:10px 0;border-bottom:1px dashed var(--line);margin:0}
+.switch.row:last-child{border-bottom:0}
+.switch.row small{display:block;font-weight:500;font-size:.8rem}
+.les-mat{flex:1 1 100%;border:1px dashed var(--line);border-radius:10px;padding:0 10px}
+.les-mat>summary{cursor:pointer;padding:8px 0;font-weight:600;font-size:.85rem;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.les-mat>summary .i{color:var(--star)}
+.les-mat[open]{padding-bottom:10px}
+.les-mat .field{margin-top:8px}
+.les-mat .kv{padding:4px 0}
+.kvlist .kv{gap:12px}
+.big-ic{width:56px;height:56px;border-radius:50%;display:inline-grid;place-items:center}
+.big-ic .i{width:28px;height:28px}
+.big-ic.ok{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.big-ic.bad{background:color-mix(in srgb,var(--bad) 12%,transparent);color:var(--bad)}
+.plan-perk{display:flex;gap:6px;align-items:center;font-weight:600;font-size:.9rem;color:var(--accent)}
+.bar.budget i{background:var(--brand)}
+.bar.budget.warn i{background:var(--accent)}
+.bar.budget.over i{background:var(--bad)}
+a.mini-btn{text-decoration:none;color:inherit}
+/* Learner-written text can be in either language; let each paragraph pick its own direction. */
+.ans p,.qa-h b,.qa>p,.news p,.nt b,.nt small,.draft textarea,.ansf textarea{unicode-bidi:plaintext}
