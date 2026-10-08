@@ -52,8 +52,10 @@ export default function mentorRoutes(r, s) {
       birthYear: { type: 'int', label: 'Birth year', min: 1920, max: new Date().getUTCFullYear() - 5 },
     });
     const m = notify.settings(ctx.user.id);
+    // node:sqlite on Node 22 can't bind booleans, so store 1 or 0.
+    const flag = (v, current) => (v === undefined ? current : v ? 1 : 0);
     db.run('UPDATE mentor_settings SET coach_on = ?, intensity = ?, email_on = ?, study_time = ? WHERE user_id = ?',
-      b.coachOn ?? m.coach_on, b.intensity ?? m.intensity, b.emailOn ?? m.email_on, b.studyTime ?? m.study_time, ctx.user.id);
+      flag(b.coachOn, m.coach_on), b.intensity ?? m.intensity, flag(b.emailOn, m.email_on), b.studyTime ?? m.study_time, ctx.user.id);
     if (b.birthYear !== undefined) db.run('UPDATE users SET birth_year = ? WHERE id = ?', b.birthYear, ctx.user.id);
     return settingsView(db.get('SELECT * FROM users WHERE id = ?', ctx.user.id));
   }, user);
